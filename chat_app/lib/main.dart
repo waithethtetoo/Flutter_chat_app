@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 void main() {
   runApp(ChatApp());
 }
 
 String name = "Name";
+// Customized for different OS
+// for iOS
+final ThemeData kIOSTheme = ThemeData(
+  primarySwatch: Colors.orange,
+  primaryColor: Colors.grey[100],
+  primaryColorBrightness: Brightness.light,
+);
+// for Android
+final ThemeData kDefaultTheme = ThemeData(
+  primarySwatch: Colors.purple,
+  accentColor: Colors.orangeAccent[400],
+);
 
 class ChatApp extends StatelessWidget {
   const ChatApp({
@@ -13,7 +28,12 @@ class ChatApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'Chat App', home: ChatScreen());
+    return MaterialApp(
+        title: 'Chat App',
+        theme: defaultTargetPlatform == TargetPlatform.iOS
+            ? kIOSTheme
+            : kDefaultTheme,
+        home: ChatScreen());
   }
 }
 
@@ -39,15 +59,17 @@ class ChatMessage extends StatelessWidget {
               margin: EdgeInsets.only(right: 16.0),
               child: CircleAvatar(child: Text(name[0])),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: Theme.of(context).textTheme.headline4),
-                Container(
-                  margin: EdgeInsets.only(top: 5.0),
-                  child: Text(text),
-                )
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: Theme.of(context).textTheme.headline4),
+                  Container(
+                    margin: EdgeInsets.only(top: 5.0),
+                    child: Text(text),
+                  )
+                ],
+              ),
             )
           ],
         ),
@@ -65,29 +87,39 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final _textController = TextEditingController();
   final List<ChatMessage> _message = [];
   final FocusNode _focusNode = FocusNode();
+  bool isComposing = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: Text('Flutter Chat')),
-        body: Column(
-          children: [
-            Flexible(
-              child: ListView.builder(
-                padding:
-                    EdgeInsets.all(8.0), // create whitespace between message
-                reverse: true,
-                itemBuilder: (_, int index) => _message[index],
-                itemCount: _message.length,
+      appBar: AppBar(
+          title: Text('Flutter Chat'),
+          elevation:
+              Theme.of(context).platform == TargetPlatform.iOS ? 0.0 : 4.0),
+      body: Container(
+          child: Column(
+            children: [
+              Flexible(
+                child: ListView.builder(
+                  padding:
+                      EdgeInsets.all(8.0), // create whitespace between message
+                  reverse: true,
+                  itemBuilder: (_, int index) => _message[index],
+                  itemCount: _message.length,
+                ),
               ),
-            ),
-            Divider(height: 1.0),
-            Container(
-              decoration: BoxDecoration(color: Theme.of(context).cardColor),
-              child: buildTextComposer(),
-            )
-          ],
-        ));
+              Divider(height: 1.0),
+              Container(
+                decoration: BoxDecoration(color: Theme.of(context).cardColor),
+                child: buildTextComposer(),
+              )
+            ],
+          ),
+          decoration: Theme.of(context).platform == TargetPlatform.iOS
+              ? BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey[200])))
+              : null),
+    );
   }
 
   // manage State of input field and Send Button
@@ -100,16 +132,29 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           Flexible(
             child: TextField(
               controller: _textController,
-              onSubmitted: handleSubmitted,
+              onChanged: (String text) {
+                setState(() {
+                  isComposing = text.length > 0;
+                });
+              },
+              onSubmitted: isComposing ? handleSubmitted : null,
               decoration: InputDecoration.collapsed(hintText: 'Send a message'),
               focusNode: _focusNode,
             ),
           ),
           Container(
               margin: EdgeInsets.symmetric(horizontal: 4.0),
-              child: IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: () => handleSubmitted(_textController.text))),
+              child: Theme.of(context).platform == TargetPlatform.iOS
+                  ? CupertinoButton(
+                      child: Text('Send'),
+                      onPressed: isComposing
+                          ? () => handleSubmitted(_textController.text)
+                          : null)
+                  : IconButton(
+                      icon: Icon(Icons.send),
+                      onPressed: () => isComposing
+                          ? handleSubmitted(_textController.text)
+                          : null)),
         ]),
       ),
     );
@@ -117,6 +162,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   void handleSubmitted(String text) {
     _textController.clear();
+    setState(() {
+      isComposing = false;
+    });
     ChatMessage message = ChatMessage(
       text: text,
       animationController: AnimationController(
