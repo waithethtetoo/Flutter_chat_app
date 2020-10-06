@@ -55,12 +55,30 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _textController = TextEditingController();
+  final List<ChatMessage> _message = [];
+  final FocusNode _focusNode = FocusNode();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Flutter Chat')),
-      body: buildTextComposer(),
-    );
+        appBar: AppBar(title: Text('Flutter Chat')),
+        body: Column(
+          children: [
+            Flexible(
+              child: ListView.builder(
+                padding: EdgeInsets.all(8.0), // create whitespace between message
+                reverse: true,
+                itemBuilder: (_, int index) => _message[index],
+                itemCount: _message.length,
+              ),
+            ),
+            Divider(height: 1.0),
+            Container(
+              decoration: BoxDecoration(color: Theme.of(context).cardColor),
+              child: buildTextComposer(),
+            )
+          ],
+        ));
   }
 
   // manage State of input field and Send Button
@@ -75,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _textController,
               onSubmitted: handleSubmitted,
               decoration: InputDecoration.collapsed(hintText: 'Send a message'),
+              focusNode: _focusNode,
             ),
           ),
           Container(
@@ -89,5 +108,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void handleSubmitted(String text) {
     _textController.clear();
+    ChatMessage message = ChatMessage(
+      text: text,
+    );
+    setState(() {
+      _message.insert(0, message);
+    });
+    _focusNode.requestFocus();
   }
 }
